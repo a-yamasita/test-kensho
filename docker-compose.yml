@@ -1,0 +1,64 @@
+version: '3.7'
+services:
+    app:
+        build:
+            context: .
+            dockerfile: .docker/Dockerfile_app
+            args:
+                UID: ${APP_UID}
+        tty: true
+        volumes:
+            - ./app:/var/www/html
+        networks:
+            - internal
+        env_file:
+            - ./.env
+    db:
+        build:
+            context: .
+            dockerfile: .docker/Dockerfile_db
+        restart: always
+        command: mysqld --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+        volumes:
+            - ./.dbdata:/var/lib/mysql
+        env_file:
+            - ./.env
+        networks:
+            - internal
+    rp:
+        build:
+            context: .
+            dockerfile: .docker/Dockerfile_rp
+        tty: true
+        ports:
+            - "80:80"
+            - "443:443"
+        volumes:
+            - type: bind
+              source: ./rp/nginx.conf.dev
+              target: /etc/nginx/nginx.conf
+            - ./rp/conf.d/:/etc/nginx/conf.d/
+            - ./rp/certs/:/etc/nginx/certs/
+        env_file:
+            - ./.env
+        command: >
+            /bin/sh -c 
+            "envsubst '
+            $$APP_FQDN
+            $$GATS_FQDN
+            $$APP_HOST_PORT
+            ' < /etc/nginx/conf.d/dev.conf.template > /etc/nginx/conf.d/dev.conf
+            && nginx -g 'daemon off;'"
+        networks:
+            - internal
+        extra_hosts: 
+            - template:127.0.0.1
+    pma:
+        image: phpmyadmin/phpmyadmin:latest
+        ports:
+            - "8081:80"
+        networks:
+            - internal
+networks:
+    internal:
+        driver: bridge

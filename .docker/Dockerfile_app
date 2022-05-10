@@ -1,0 +1,14 @@
+FROM php:8.1.4-fpm-alpine3.14
+ARG UID
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+RUN apk update && \
+    apk add --no-cache shadow freetype libpng libjpeg-turbo freetype-dev libpng-dev libjpeg-turbo-dev && \
+    docker-php-ext-install gd pdo_mysql && \
+    apk del --no-cache freetype-dev libpng-dev libjpeg-turbo-dev
+
+#RUN apk update && apk add shadow && docker-php-ext-install pdo_mysql mysqlnd mbstring gd iconv
+RUN usermod -u $UID -d /var/www/html -s /bin/ash www-data
+USER www-data
+
+
+
